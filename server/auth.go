@@ -169,11 +169,15 @@ func addAuthEndpoints(r chi.Router, config *ServerConfig) {
 }
 
 func (spaceConfig *SpaceConfig) InitAuth() error {
-	var initErr error
+	// Use sync.Once to ensure initialization happens exactly once
+	// This is the idiomatic Go pattern for thread-safe lazy initialization
 	spaceConfig.authOnce.Do(func() {
-		// Need to do some initialization
-		spaceConfig.JwtIssuer, initErr = CreateAuthenticator(path.Join(spaceConfig.SpaceFolderPath, ".silverbullet.auth.json"), spaceConfig.Auth)
-		if initErr != nil {
+		// Initialize JWT issuer
+		spaceConfig.JwtIssuer, spaceConfig.authErr = CreateAuthenticator(
+			path.Join(spaceConfig.SpaceFolderPath, ".silverbullet.auth.json"),
+			spaceConfig.Auth,
+		)
+		if spaceConfig.authErr != nil {
 			return
 		}
 
@@ -184,7 +188,7 @@ func (spaceConfig *SpaceConfig) InitAuth() error {
 			spaceConfig.LockoutTimer = NewLockoutTimer(0, 0) // disabled
 		}
 	})
-	return initErr
+	return spaceConfig.authErr
 }
 
 // authMiddleware provides authentication middleware

@@ -52,8 +52,8 @@ type SpaceConfig struct {
 	// Auth temporary objects
 	JwtIssuer    *Authenticator
 	LockoutTimer *LockoutTimer
-	authMutex    sync.Mutex
 	authOnce     sync.Once
+	authErr      error
 }
 
 type ConfigResolver func(r *http.Request) (*SpaceConfig, error)
