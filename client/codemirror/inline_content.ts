@@ -42,6 +42,9 @@ export function inlineContentPlugin(client: Client) {
           widgets.push(invisibleDecoration.range(from, to));
         }
 
+        // Place widget after the image syntax, but clamp to document length
+        // to handle images at end of document (fixes #1624)
+        const widgetPos = Math.min(to + 1, state.doc.length);
         widgets.push(
           Decoration.widget({
             widget: new LuaWidget(
@@ -71,7 +74,7 @@ export function inlineContentPlugin(client: Client) {
               true,
             ),
             block: true,
-          }).range(to + 1),
+          }).range(widgetPos),
         );
       },
     });

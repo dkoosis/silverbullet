@@ -51,7 +51,12 @@ export function luaDirectivePlugin(client: Client) {
             if (typeof tags === "string") {
               tags = tags.split(/\s+|,\s*/);
             }
-            if (tags.find((tag: string) => tag.startsWith("meta/template"))) {
+            // Guard against non-string tags in frontmatter
+            if (
+              tags.find((tag: unknown) =>
+                typeof tag === "string" && tag.startsWith("meta/template")
+              )
+            ) {
               shouldRender = false;
               return;
             }

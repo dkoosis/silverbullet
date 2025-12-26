@@ -87,7 +87,8 @@ export function hideHeaderMarkPlugin() {
     const widgets: any[] = [];
     syntaxTree(state).iterate({
       enter: ({ type, from, to }) => {
-        if (!type.name.startsWith("ATXHeading")) {
+        // Guard against undefined type.name during editor state transitions
+        if (!type.name?.startsWith("ATXHeading")) {
           return;
         }
         // Get the active line
