@@ -60,7 +60,11 @@ func upgrade(urlPrefix string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			fmt.Printf("Warning: failed to clean up temp dir: %v\n", err)
+		}
+	}()
 
 	// Construct download URL
 	zipURL := fmt.Sprintf("%s/silverbullet-server-%s-%s.zip", urlPrefix, runtime.GOOS, archMappings[runtime.GOARCH])
@@ -73,7 +77,11 @@ func upgrade(urlPrefix string) error {
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("Warning: failed to close response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed with status: %d", resp.StatusCode)
@@ -84,14 +92,21 @@ func upgrade(urlPrefix string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create zip file: %w", err)
 	}
-	defer zipFile.Close()
+	defer func() {
+		if err := zipFile.Close(); err != nil {
+			fmt.Printf("Warning: failed to close zip file: %v\n", err)
+		}
+	}()
 
 	// Copy response body to file
 	_, err = io.Copy(zipFile, resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to save zip file: %w", err)
 	}
-	zipFile.Close()
+	// Explicitly close before extracting to ensure all data is flushed
+	if err := zipFile.Close(); err != nil {
+		return fmt.Errorf("failed to close zip file: %w", err)
+	}
 
 	fmt.Printf("Now going to replace the existing silverbullet binary in %s\n", installDir)
 
@@ -120,7 +135,11 @@ func extractZip(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
+	defer func() {
+		if err := reader.Close(); err != nil {
+			log.Printf("Warning: failed to close zip reader: %v\n", err)
+		}
+	}()
 
 	for _, file := range reader.File {
 		path := filepath.Join(dest, file.Name)
@@ -137,7 +156,11 @@ func extractZip(src, dest string) error {
 		if err != nil {
 			return err
 		}
-		defer rc.Close()
+		defer func() {
+			if err := rc.Close(); err != nil {
+				log.Printf("Warning: failed to close file: %v\n", err)
+			}
+		}()
 
 		// Create parent directories
 		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -159,7 +182,11 @@ func extractZip(src, dest string) error {
 		if err != nil {
 			return err
 		}
-		defer outFile.Close()
+		defer func() {
+			if err := outFile.Close(); err != nil {
+				log.Printf("Warning: failed to close output file: %v\n", err)
+			}
+		}()
 
 		// Extract to the file
 		_, err = io.Copy(outFile, rc)

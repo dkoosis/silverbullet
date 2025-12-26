@@ -15,7 +15,11 @@ func TestExtractZipRenamesExistingFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("Warning: failed to clean up temp dir: %v", err)
+		}
+	}()
 
 	// Create a test zip file
 	zipPath := filepath.Join(tmpDir, "test.zip")
@@ -40,7 +44,9 @@ func TestExtractZipRenamesExistingFile(t *testing.T) {
 	if err := zipWriter.Close(); err != nil {
 		t.Fatalf("Failed to close zip writer: %v", err)
 	}
-	zipFile.Close()
+	if err := zipFile.Close(); err != nil {
+		t.Fatalf("Failed to close zip file: %v", err)
+	}
 
 	// Create destination directory
 	destDir := filepath.Join(tmpDir, "dest")
@@ -87,7 +93,11 @@ func TestExtractZipHandlesNonExistentFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("Warning: failed to clean up temp dir: %v", err)
+		}
+	}()
 
 	// Create a test zip file
 	zipPath := filepath.Join(tmpDir, "test.zip")
@@ -112,7 +122,9 @@ func TestExtractZipHandlesNonExistentFile(t *testing.T) {
 	if err := zipWriter.Close(); err != nil {
 		t.Fatalf("Failed to close zip writer: %v", err)
 	}
-	zipFile.Close()
+	if err := zipFile.Close(); err != nil {
+		t.Fatalf("Failed to close zip file: %v", err)
+	}
 
 	// Create destination directory (but no existing file)
 	destDir := filepath.Join(tmpDir, "dest")

@@ -87,7 +87,11 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Proxy: failed to close response body: %v", err)
+		}
+	}()
 
 	// Copy response response header with x-proxy-header prefix to keep things clean
 	for key, values := range resp.Header {

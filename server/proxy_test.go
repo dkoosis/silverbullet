@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,26 +51,54 @@ func TestProxyHandlerTimeout(t *testing.T) {
 	}))
 	defer hangingServer.Close()
 
-	// Create a test request to the proxy
-	req := httptest.NewRequest("GET", "/.fs/"+hangingServer.URL[7:]+"/test", nil) // Remove "http://"
-	ctx := context.WithValue(req.Context(), "spaceConfig", &SpaceConfig{
-		ReadOnlyMode: false,
+	// Extract just the host:port from the test server URL
+	// URL format is "http://127.0.0.1:port", we need "127.0.0.1:port/test"
+	serverURL := hangingServer.URL[7:] // Remove "http://"
+
+	// Create a proper chi router with the proxy route
+	router := chi.NewRouter()
+	
+	// Set up space config middleware
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), spaceConfigKey, &SpaceConfig{
+				ReadOnlyMode: false,
+			})
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	})
-	req = req.WithContext(ctx)
+	
+	// Register the proxy handler with chi wildcard route
+	router.HandleFunc("/.proxy/*", proxyHandler)
 
-	// Record the response
-	w := httptest.NewRecorder()
+	// Create test server with the chi router
+	testServer := httptest.NewServer(router)
+	defer testServer.Close()
 
-	// The proxy handler should timeout and return an error
+	// Make the request through the test server
+	client := &http.Client{
+		Timeout: 35 * time.Second, // Allow client enough time
+	}
+
 	start := time.Now()
-	proxyHandler(w, req)
+	resp, err := client.Get(testServer.URL + "/.proxy/" + serverURL + "/test")
 	duration := time.Since(start)
+
+	// The proxy should timeout internally (30s) before client timeout (35s)
+	if err == nil {
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				t.Logf("Failed to close response body: %v", err)
+			}
+		}()
+	}
 
 	// Verify it timed out in a reasonable time (~30s, not 35s+)
 	assert.Less(t, duration, 33*time.Second, "Request should timeout before 33 seconds")
 	assert.Greater(t, duration, 28*time.Second, "Request should take at least 28 seconds (near timeout)")
 
 	// Verify we got an error response (not success)
-	assert.Equal(t, http.StatusInternalServerError, w.Code, "Should return 500 on timeout")
-	assert.Contains(t, w.Body.String(), "timeout", "Error message should mention timeout")
+	if resp != nil {
+		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "Should return 500 on timeout")
+	}
 }

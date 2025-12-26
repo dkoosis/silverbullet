@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html/template"
 	"log"
-	"math"
 	"net/http"
 	"path"
 	"strings"
@@ -300,8 +299,7 @@ type LockoutTimer struct {
 // countPeriodMs: time window in milliseconds
 // limit: maximum attempts allowed in the time window
 func NewLockoutTimer(countPeriodMs int, limit int) *LockoutTimer {
-	disabled := math.IsNaN(float64(countPeriodMs)) || math.IsNaN(float64(limit)) ||
-		countPeriodMs < 1 || limit < 1
+	disabled := countPeriodMs < 1 || limit < 1
 
 	return &LockoutTimer{
 		bucketSize: int64(countPeriodMs),
