@@ -69,7 +69,20 @@ export async function loadConfig(
   exposeSyscalls(rootEnv, bootSystem);
 
   // Parse the code
-  const chunk = parse(luaCode, {});
+  let chunk;
+  try {
+    chunk = parse(luaCode, {});
+  } catch (e: any) {
+    // Syntax error in CONFIG - log clearly and return empty config to allow boot
+    console.error(
+      "CONFIG parse error: Your CONFIG contains a Lua syntax error. " +
+        "Please fix the syntax error in your CONFIG.md file.",
+      e.message,
+    );
+    // Return empty config so the app can still boot (user can then fix the error)
+    return config;
+  }
+
   const sf = LuaStackFrame.createWithGlobalEnv(rootEnv, chunk.ctx);
 
   // And eval

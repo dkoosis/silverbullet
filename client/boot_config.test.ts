@@ -64,3 +64,24 @@ Deno.test("Test CONFIG lua eval", async () => {
     },
   });
 });
+
+Deno.test("Test CONFIG syntax error resilience", async () => {
+  // Syntax error in Lua code should not crash, should return empty config
+  // This tests fix for #1679
+  const config = await loadConfig(
+    `
+    config.set {
+      option1 = "pete"
+    -- Missing closing brace causes parse error
+`,
+    {},
+  );
+  // Should return empty config instead of throwing
+  assertEquals(config.values, {});
+});
+
+Deno.test("Test CONFIG partial syntax error", async () => {
+  // Even with invalid syntax, the app should boot with empty config
+  const config = await loadConfig("this is not valid lua {{{", {});
+  assertEquals(config.values, {});
+});
