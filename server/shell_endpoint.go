@@ -24,6 +24,10 @@ func handleShellEndpoint(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	// Limit request body size to prevent OOM (1MB max for shell commands)
+	r.Body = http.MaxBytesReader(w, r.Body, 1*1024*1024)
+
 	// Parse the request body
 	var shellRequest ShellRequest
 	if err := json.NewDecoder(r.Body).Decode(&shellRequest); err != nil {
